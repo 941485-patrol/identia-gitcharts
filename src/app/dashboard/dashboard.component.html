@@ -1,0 +1,136 @@
+<div class="container mx-auto p-4 max-w-6xl">
+  <!-- Header -->
+  <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-brand-dark">Repository Dashboard</h1>
+      <p class="text-gray-500 mt-1">Compare metrics across your selected repositories</p>
+    </div>
+    
+    @if (dashboardRepos().length > 0) {
+      <a routerLink="/search" class="inline-flex items-center px-4 py-2 bg-white border border-brand-primary rounded-md font-semibold text-xs text-brand-dark uppercase tracking-widest shadow-sm hover:bg-brand-bg transition-colors">
+        Add More
+      </a>
+    }
+  </header>
+
+  @if (loading() && dashboardRepos().length === 0) {
+    <!-- Initial Loading State -->
+    <div class="flex flex-col items-center justify-center py-20">
+      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-primary mb-4"></div>
+      <p class="text-gray-500 font-medium">Fetching latest repository data...</p>
+    </div>
+  } @else if (dashboardRepos().length > 0) {
+    <div class="space-y-8">
+      
+      <!-- Comparison Chart Section -->
+      @defer (on idle) {
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-brand-light">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h2 class="text-xl font-semibold text-brand-dark">Repository Comparison</h2>
+            
+            <!-- Metric Toggle -->
+            <div class="inline-flex p-1 bg-brand-bg rounded-lg">
+              @for (m of metrics; track m.value) {
+                <button 
+                  (click)="selectedMetric.set(m.value)"
+                  [class.bg-white]="selectedMetric() === m.value"
+                  [class.shadow-sm]="selectedMetric() === m.value"
+                  [class.text-brand-primary]="selectedMetric() === m.value"
+                  class="px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200"
+                >
+                  {{ m.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Chart Canvas -->
+          <div class="h-[400px] w-full relative">
+            <canvas #repoChart></canvas>
+          </div>
+        </section>
+      }
+
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Sidebar: Toggles -->
+        <aside class="lg:col-span-1">
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-brand-light sticky top-4">
+            <h3 class="text-sm font-semibold text-brand-primary uppercase tracking-wider mb-4">Toggle Visibility</h3>
+            <div class="space-y-3">
+              @for (repo of dashboardRepos(); track repo.id) {
+                <label class="flex items-center p-2 rounded-lg hover:bg-brand-bg cursor-pointer transition-colors">
+                  <input 
+                    type="checkbox" 
+                    [checked]="activeRepoIds().has(repo.id)" 
+                    (change)="toggleRepo(repo.id)"
+                    class="w-4 h-4 text-brand-primary border-brand-primary rounded focus:ring-brand-light"
+                  >
+                  <span class="ml-3 text-sm font-medium text-brand-dark truncate" [title]="repo.fullName">
+                    {{ repo.name }}
+                  </span>
+                </label>
+              }
+            </div>
+          </div>
+        </aside>
+
+        <!-- Detailed Cards -->
+        <main class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+          @for (repo of dashboardRepos(); track repo.id) {
+            @defer (on viewport) {
+              <div 
+                [class.opacity-50]="!activeRepoIds().has(repo.id)"
+                class="bg-white p-6 rounded-xl shadow-sm border border-brand-light flex flex-col justify-between hover:shadow-md transition-all duration-200"
+              >
+                <div>
+                  <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-lg font-bold text-brand-dark truncate pr-2">{{ repo.name }}</h3>
+                    <button (click)="removeRepo(repo.id)" class="text-gray-400 hover:text-red-500 transition-colors">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </div>
+                  <p class="text-gray-500 text-xs mb-4">{{ repo.fullName }}</p>
+                  
+                  <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-brand-bg p-3 rounded-lg">
+                      <span class="block text-xs text-gray-500">Stars</span>
+                      <span class="text-lg font-semibold text-brand-dark">{{ repo.stars | number }}</span>
+                    </div>
+                    <div class="bg-brand-bg p-3 rounded-lg">
+                      <span class="block text-xs text-gray-500">Forks</span>
+                      <span class="text-lg font-semibold text-brand-dark">{{ repo.forks | number }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-brand-bg flex justify-between items-center">
+                  <span class="text-xs font-medium px-2 py-1 rounded bg-brand-light text-brand-dark">
+                    {{ repo.language || 'N/A' }}
+                  </span>
+                  <a [href]="repo.url" target="_blank" class="text-brand-primary hover:text-brand-dark text-sm font-medium flex items-center">
+                    View GitHub
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  </a>
+                </div>
+              </div>
+            } @placeholder {
+              <div class="h-48 bg-brand-bg animate-pulse rounded-xl"></div>
+            }
+          }
+        </main>
+      </div>
+    </div>
+  } @else {
+    <!-- Empty State -->
+    <div class="text-center py-20 bg-white rounded-xl shadow-sm border border-dashed border-brand-light">
+      <div class="bg-brand-light w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg class="w-10 h-10 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+      </div>
+      <h3 class="text-2xl font-bold text-brand-dark">Dashboard Empty</h3>
+      <p class="text-gray-500 mt-2">Add repositories from the search page to compare them.</p>
+      <a routerLink="/search" class="mt-8 inline-flex items-center px-6 py-3 rounded-md shadow-sm text-white bg-brand-primary hover:bg-brand-dark transition-colors">
+        Go to Search
+      </a>
+    </div>
+  }
+</div>

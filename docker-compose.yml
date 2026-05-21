@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  angular-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: angular_dev_indentia
+    ports:
+      - "4200:4200"
+      - "9229:9229" # Opens the debug port to your local machine
+    volumes:
+      - .:/app
+      # - /app/node_modules
+    environment:
+      - NODE_ENV=development
